@@ -78,7 +78,6 @@ const maxFileBytes = 1 * 1024 * 1024;
 const disclaimerText =
   "This is an independently managed private scholarship assistance initiative and is not affiliated with any government authority.";
 const debugEmail = "debug-preview@zenesis.foundation";
-
 const defaultAcademicHistoryEntry: AcademicHistoryEntry = {
   previousCollegeName: "",
   previousUniversityName: "",
@@ -568,65 +567,54 @@ export default function Home() {
       return;
     }
 
-    const readFile = (file: File | null) =>
-      new Promise<{ name: string; type: string; size: number; base64: string } | null>((resolve) => {
-        if (!file) {
-          resolve(null);
-          return;
-        }
-
-        const reader = new FileReader();
-        reader.onload = () => {
-          const base64 = String(reader.result || "");
-          resolve({ name: file.name, type: file.type, size: file.size, base64 });
-        };
-        reader.onerror = () => resolve(null);
-        reader.readAsDataURL(file);
-      });
-
     void (async () => {
       setIsSubmitting(true);
 
       try {
-        const filePayload: Record<string, unknown> = {};
-        const aadhaar = await readFile(secondPage.aadhaarFile);
-        const marksheet10 = await readFile(secondPage.marksheet10File);
-        const marksheet12 = await readFile(secondPage.marksheet12File);
-        const officialFeeStructure = await readFile(secondPage.officialFeeStructureFile);
-        const admissionFeeReceipt = await readFile(secondPage.admissionFeeReceiptFile);
-        const offerAdmissionLetter = await readFile(secondPage.offerAdmissionLetterFile);
-        const incomeCertificate = await readFile(secondPage.incomeCertificateFile);
-        const paidFeeReceipt = await readFile(secondPage.paidFeeReceiptFile);
-        const bonafide = await readFile(secondPage.bonafideFile);
+        const formData = new FormData();
+        formData.append("firstPage", JSON.stringify(firstPage));
+        formData.append("academicHistoryEntries", JSON.stringify(academicHistoryEntries));
+        formData.append(
+          "secondPage",
+          JSON.stringify({
+            accountNumber: secondPage.accountNumber,
+            ifsc: secondPage.ifsc,
+          }),
+        );
 
-        if (aadhaar) filePayload.aadhaar = aadhaar;
-        if (marksheet10) filePayload.marksheet10 = marksheet10;
-        if (marksheet12) filePayload.marksheet12 = marksheet12;
-        if (officialFeeStructure) filePayload.officialFeeStructure = officialFeeStructure;
-        if (admissionFeeReceipt) filePayload.admissionFeeReceipt = admissionFeeReceipt;
-        if (offerAdmissionLetter) filePayload.offerAdmissionLetter = offerAdmissionLetter;
-        if (incomeCertificate) filePayload.incomeCertificate = incomeCertificate;
-        if (paidFeeReceipt) filePayload.paidFeeReceipt = paidFeeReceipt;
-        if (bonafide) filePayload.bonafide = bonafide;
+        const uploadEntries: Array<[typeof uploadFieldKeys[number], File | null]> = [
+          ["aadhaar", secondPage.aadhaarFile],
+          ["marksheet10", secondPage.marksheet10File],
+          ["marksheet12", secondPage.marksheet12File],
+          ["officialFeeStructure", secondPage.officialFeeStructureFile],
+          ["admissionFeeReceipt", secondPage.admissionFeeReceiptFile],
+          ["offerAdmissionLetter", secondPage.offerAdmissionLetterFile],
+          ["incomeCertificate", secondPage.incomeCertificateFile],
+          ["paidFeeReceipt", secondPage.paidFeeReceiptFile],
+          ["bonafide", secondPage.bonafideFile],
+        ];
 
-        const payload = {
-          firstPage,
-          academicHistoryEntries,
-          secondPage: {
-            ...secondPage,
-            confirmAccountNumber: undefined,
-            confirmIfsc: undefined,
-          },
-          files: filePayload,
-        };
+        for (const [key, file] of uploadEntries) {
+          if (file) {
+            formData.append(key, file, file.name);
+          }
+        }
 
         const response = await fetch("/api/submit", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
+          body: formData,
         });
 
-        const data = await response.json();
+        const responseText = await response.text();
+        let data: { ok?: boolean; referenceId?: string; error?: string } = {};
+
+        try {
+          data = JSON.parse(responseText) as { ok?: boolean; referenceId?: string; error?: string };
+        } catch {
+          throw new Error(
+            responseText || "The server returned an invalid response while submitting the application.",
+          );
+        }
 
         if (data.ok && data.referenceId) {
           const message = "Application sent successfully.";

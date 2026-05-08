@@ -33,19 +33,17 @@ type SecondPageData = {
   ifsc?: string;
 };
 
-type UploadedFile = {
-  name: string;
-  type?: string;
-  size: number;
-  base64: string;
-};
-
-type SubmissionPayload = {
-  firstPage: FirstPageData;
-  academicHistoryEntries?: AcademicHistoryEntry[];
-  secondPage: SecondPageData;
-  files?: Record<string, UploadedFile | undefined>;
-};
+const uploadFieldKeys = [
+  "aadhaar",
+  "marksheet10",
+  "marksheet12",
+  "officialFeeStructure",
+  "admissionFeeReceipt",
+  "offerAdmissionLetter",
+  "incomeCertificate",
+  "paidFeeReceipt",
+  "bonafide",
+] as const;
 
 function createReferenceId() {
   const now = new Date();
@@ -59,9 +57,12 @@ function createReferenceId() {
 
 export async function POST(req: Request) {
   try {
-    const body = (await req.json()) as SubmissionPayload;
-
-    const { firstPage, academicHistoryEntries, secondPage, files = {} } = body;
+    const formData = await req.formData();
+    const firstPage = JSON.parse(String(formData.get("firstPage") || "{}")) as FirstPageData;
+    const academicHistoryEntries = JSON.parse(
+      String(formData.get("academicHistoryEntries") || "[]"),
+    ) as AcademicHistoryEntry[];
+    const secondPage = JSON.parse(String(formData.get("secondPage") || "{}")) as SecondPageData;
     const referenceId = createReferenceId();
     const applicantFullName = [firstPage.firstName, firstPage.middleName, firstPage.lastName]
       .filter(Boolean)
@@ -70,16 +71,27 @@ export async function POST(req: Request) {
 
     // validate file sizes server-side too
     const attachments: Array<{ filename: string; content: Buffer; contentType: string }> = [];
-    for (const key of Object.keys(files)) {
-      const f = files[key];
-      if (!f) continue;
-      const size = f.size || 0;
-      if (size > MAX_FILE_BYTES) {
-        return NextResponse.json({ ok: false, error: `${f.name} exceeds 1 MB limit` }, { status: 400 });
+    const uploadedFiles: Record<string, File | null> = {};
+
+    for (const key of uploadFieldKeys) {
+      const file = formData.get(key);
+      if (!(file instanceof File) || file.size === 0) {
+        uploadedFiles[key] = null;
+        continue;
       }
-      // base64 content expected
-      const content = Buffer.from(f.base64.split(",").pop() || "", "base64");
-      attachments.push({ filename: f.name, content, contentType: f.type || "application/octet-stream" });
+
+      uploadedFiles[key] = file;
+      const size = file.size || 0;
+      if (size > MAX_FILE_BYTES) {
+        return NextResponse.json({ ok: false, error: `${file.name} exceeds 1 MB limit` }, { status: 400 });
+      }
+
+      const content = Buffer.from(await file.arrayBuffer());
+      attachments.push({
+        filename: file.name,
+        content,
+        contentType: file.type || "application/octet-stream",
+      });
     }
 
     // build email html
@@ -155,7 +167,7 @@ export async function POST(req: Request) {
             <section style="margin-bottom:18px;">
               <h3 style="margin:0 0 8px 0;font-size:13px;color:#0f1722;font-weight:600">Uploaded Documents</h3>
               <ul style="margin:0;padding-left:18px;color:#0f1722">
-                ${Object.keys(files).map(k => `<li style="margin-bottom:6px">${k}: ${files[k] ? files[k].name : 'Not provided'}</li>`).join('')}
+                ${uploadFieldKeys.map((key) => `<li style="margin-bottom:6px">${key}: ${uploadedFiles[key]?.name || 'Not provided'}</li>`).join("")}
               </ul>
             </section>
 
