@@ -68,6 +68,17 @@ type SubmissionResult = {
   referenceId: string;
 };
 
+type UploadFieldKey =
+  | "aadhaar"
+  | "marksheet10"
+  | "marksheet12"
+  | "officialFeeStructure"
+  | "admissionFeeReceipt"
+  | "offerAdmissionLetter"
+  | "incomeCertificate"
+  | "paidFeeReceipt"
+  | "bonafide";
+
 const inputClass =
   "w-full rounded-2xl border border-[#EAEAF4] bg-[#F7F7FB] px-4 py-3 text-sm text-[#111111] shadow-sm outline-none transition placeholder:text-[#8E8AA8] focus:border-[#6D4CFF] focus:bg-white focus:ring-4 focus:ring-[#B9A7FF]/35";
 const sectionClass =
@@ -582,7 +593,7 @@ export default function Home() {
           }),
         );
 
-        const uploadEntries: Array<[typeof uploadFieldKeys[number], File | null]> = [
+        const uploadEntries: Array<[UploadFieldKey, File | null]> = [
           ["aadhaar", secondPage.aadhaarFile],
           ["marksheet10", secondPage.marksheet10File],
           ["marksheet12", secondPage.marksheet12File],
