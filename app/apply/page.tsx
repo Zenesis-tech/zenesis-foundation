@@ -1402,7 +1402,6 @@ export default function Home() {
                     <SummaryRow label="Application status" value="Submitted" />
                     <SummaryRow label="Reference ID" value={submissionResult.referenceId} />
                     <SummaryRow label="Confirmation email" value="Sent" />
-                    <SummaryRow label="Form state" value="Reset for new entry" />
                   </>
                 ) : step === 1 ? (
                   <>
