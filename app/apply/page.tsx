@@ -470,7 +470,6 @@ export default function Home() {
       secondPage.confirmAccountNumber,
       secondPage.ifsc,
       secondPage.confirmIfsc,
-      secondPage.bonafideFile,
     ];
 
     const complete = checks.filter(Boolean).length;
@@ -487,7 +486,7 @@ export default function Home() {
       { label: "Offer or admission letter uploaded", done: Boolean(secondPage.offerAdmissionLetterFile) },
       { label: "Income certificate uploaded", done: Boolean(secondPage.incomeCertificateFile) },
       { label: "Paid fee receipt uploaded", done: Boolean(secondPage.paidFeeReceiptFile) },
-      { label: "Bonafide certificate uploaded", done: Boolean(secondPage.bonafideFile) },
+      { label: "Bonafide certificate uploaded (optional)", done: Boolean(secondPage.bonafideFile) },
     ],
     [secondPage],
   );
@@ -1326,13 +1325,14 @@ export default function Home() {
                 <section className={sectionClass}>
                   <SectionTitle
                     icon={Upload}
-                    title="Bonafide certificate"
+                    title="Bonafide certificate (optional)"
                     description="Upload the latest bonafide certificate issued by the institution."
                   />
                   <FileUploadField
                     label="Upload bonafide certificate"
                     file={secondPage.bonafideFile}
                     onChange={handleFileChange("bonafideFile")}
+                    required={false}
                   />
                 </section>
 
